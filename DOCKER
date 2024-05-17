@@ -1,0 +1,104 @@
+-------------------------------------------API--------------------------------------------------
+Para crear una imagen
+-Se posicionan en la carpeta raiz de la api
+-Crean un Dockerfile en la carpeta raiz, con la configuracion	
+	Ejemplo: 
+JERSEY-	
+		FROM openjdk:8
+		COPY mulesoft.crt /tmp/mulesoft.crt
+		RUN keytool -import -trustcacerts -keystore $JAVA_HOME/jre/lib/security/cacerts -storepass changeit -noprompt -alias certificadoMulesoft -file /tmp/mulesoft.crt
+		ARG JAR_FILE=target/app.jar
+		ARG PROPERTIES_FILE=target/commons.properties
+		COPY ${JAR_FILE} app.jar
+		COPY ${PROPERTIES_FILE} commons.properties
+		ENTRYPOINT ["java","-jar","/app.jar","otro","0","/commons.properties"]
+
+SPRINGBOOT-	
+		FROM openjdk:8
+		COPY token.crt /tmp/token.crt
+		RUN keytool -import -trustcacerts -keystore $JAVA_HOME/jre/lib/security/cacerts -storepass changeit -noprompt -alias certificadoTokenMulesoft -file /tmp/token.crt
+		COPY cancelacion.crt /tmp/cancelacion.crt
+		RUN keytool -import -trustcacerts -keystore $JAVA_HOME/jre/lib/security/cacerts -storepass changeit -noprompt -alias certificadoCancelacionMulesoft -file /tmp/cancelacion.crt
+		ARG JAR_FILE=target/app.jar
+		ARG PROPERTIES_FILE=target/application.properties
+		COPY ${JAR_FILE} app.jar
+		COPY ${PROPERTIES_FILE} application.properties
+		ENTRYPOINT ["java","-jar","/app.jar","--spring.config.location=/application.properties"]
+		
+Con este comando crean la imagen poara una api 
+- docker build -t "nombre de la imagen/api" .
+	Ejemplo: 
+		docker build -t api-cancelaciones .
+
+Ver imegenes 
+- docker images
+
+Para correr el contenedor 
+- docker run -d --name proyecto-p 8080:8080 api-cancelaciones:latest
+
+Ver contenedores 
+- docker ps
+
+Ver redes 
+- docker network ls
+
+Crear ip fija
+- docker network create --subnet=172.0.0.1/16 miRed
+
+Borrar red creada 
+- docker network rm <nombre de la red>
+
+Ver configuracion para ver la IP en la que se está ejecutando el contenedor
+- docker inspect "CONTAINER ID del apartado docker ps"
+	Ejemplo:
+		docker inspect 63559148111f
+Asi mismo se puede ver a travez de la consola del docker desktop con los comandos 
+	-docker exec -it api-cancelaciones /bin/bash
+		-cat /etc/hosts
+
+
+-----------------------------------BASE DE DATOS POSTGRES-----------------------------------------------------------------------
+
+Para descargar el contenedor de Postgres se utiliza:
+	docker pull postgres
+	
+Ahora tenemos que crear una instancia de postgres: pero este comando nos pedira contraseña, asi que en el siguiente paso la asignamos
+	docker run postgresbd
+	
+Ejecutaremos este comando para inicializar la BD con usuario, contraseña, bd y puerto 
+	docker run --name postgresbd -e POSTGRES_USER=root -e POSTGRES_PASSWORD=12345 -e POSTGRES_DB=postgres -p 6001:5432 postgresbd
+
+Para poder entrar a la bd desde consola, tendremos que abrir otra consola diferente y tirar este comando:
+	docker exec -it postgresbd bash 
+	
+Dentro de ella usamos este comando para ponder entrar a la bd:
+	psql -U postgresbd --password
+
+
+-----------------------------------PROPERTIES DE API CONFIGURADA PARA BD POSTGRES EN DOCKER-------------------------------------	
+
+server.port = 8081
+server.error.whitelabel.enabled=false
+server.servlet.context-path=/api.crud
+
+##spring.datasource.url=jdbc:sqlserver://MOV-230542-9015.prueba2
+##spring.datasource.url=jdbc:sqlserver://MOV-230542-9015:1433;databaseName=prueba2;integratedSecurity=true;trustServerCertificate=false;
+#spring.datasource.driverClassName=com.microsoft.sqlserver.jdbc.SQLServerDriver
+spring.datasource.url=jdbc:postgresql://172.17.0.1:6001/postgres
+spring.datasource.username=root
+spring.datasource.password=12345
+
+spring.jpa.show-sql=true
+spring.jpa.generated.ddl=true
+spring.jpa.hibernate.ddl-auto=update
+##spring.jpa.hibernate.naming.strategy=org.hibernate.cfg.ImprovedNamingStrategy
+##spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL5Dialect
+
+
+---------------------------Mandar llamar ENDPOINT desde POSTMAN----------------------------------------------------------------
+
+http://localhost:8081/api.crud/api/v1/greeting/loginPublic
+
+
+
+
